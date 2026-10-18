@@ -34,13 +34,13 @@ The app is static: the UI talks only to a storage module, which owns the browser
 
 ## Outcomes
 
-- [ ] Todos can be added, listed, completed, edited and deleted. Not built: no app code exists.
-- [ ] The list filters by all, active and done. Not built: no app code exists.
-- [ ] Todos survive a reload and a browser restart, kept in the visitor's browser storage. Not built: no storage code exists.
-- [ ] A popped todo can be restored and a delete can be undone. Not built: no app code exists.
-- [ ] Active and done counts and an all-time popped tally are always visible. Not built: no app code exists.
-- [ ] Popping has sound and visual effects, with a remembered mute toggle and reduced-motion support. Not built: no app code exists.
-- [ ] The app is live at the repo's public GitHub Pages URL. Not built: no Pages site and no deploy workflow.
+- [ ] Todos can be added, listed, completed, edited and deleted (todoit-v1-app). Not built: no app code exists.
+- [ ] The list filters by all, active and done (todoit-v1-app). Not built: no app code exists.
+- [ ] Todos survive a reload and a browser restart, kept in the visitor's browser storage (todoit-v1-app). Not built: no storage code exists.
+- [ ] A popped todo can be restored and a delete can be undone (todoit-v1-app). Not built: no app code exists.
+- [ ] Active and done counts and an all-time popped tally are always visible (todoit-v1-app). Not built: no app code exists.
+- [ ] Popping has sound and visual effects, with a remembered mute toggle and reduced-motion support (todoit-v1-app). Not built: no app code exists.
+- [ ] The app is live at the repo's public GitHub Pages URL (todoit-v1-publish). Not built: no Pages site and no deploy workflow.
 
 ## Decisions
 
@@ -51,7 +51,8 @@ The app is static: the UI talks only to a storage module, which owns the browser
 - The app is plain HTML and JavaScript modules with no build step, not React or TypeScript with Vite, because Pages can serve the repo's files as they are.
 - The app's logic has unit tests, kept apart from the DOM and storage so the tests run without a browser.
 - GitHub Pages publishes from `main`, not `develop`, so publishing is a deliberate merge of `develop` into `main`.
-- Todos show as bubbles the visitor interacts with, popping one to complete it, so the app has visual flair; the interaction is prototyped and the look is chosen from mockups before either is built.
+- Todos show as bubbles the visitor pops to complete, each pop dropping a marble into a jar that keeps every pop ever while a ring around the jar fills for the current list, as in `scratch/E-todoit-v1/prototypes/iteration-2/jar-ring.html` (bubble-interaction-prototype), not the slingshot blast, the packed cluster, the fill-line jar or the shelf of day jars, because the user picked the jar with the cluster's ring turned into it.
+- The look is washday, soap bubbles with pastel rims on a pale sky, as in `scratch/E-todoit-v1/mockups/washday.html` (visual-aesthetic-mockups), not underwater, space or abstract, because the user picked it and soap bubbles are what a visitor pops.
 - A popped todo can be restored from the done view and a delete offers an undo toast for a few seconds, not permanent pops and deletes and not an "are you sure?" prompt, because the pop keeps its finality while a mis-tap costs nothing.
 - Progress shows as live active and done counts plus a lasting all-time popped tally kept in IndexedDB, not counts alone and not a level or XP bar, because the tally is the cheapest lasting reward and an XP bar would pass v1's scope.
 - Sound starts on after the first tap with a mute toggle remembered in the browser, and motion follows the system's reduced-motion setting, not sound off with no settings and not a settings panel, because people differ and one toggle is the smallest opt-out.
@@ -64,6 +65,7 @@ The app is static: the UI talks only to a storage module, which owns the browser
 ## Out of Scope
 
 - A server, an API or accounts: v1 keeps every visitor's todos in their own browser.
+- Grouping todos by date with a shelf of jars for the coming days, filed as the idea `day-jars-group-todos-by-date-with-a`: the user wants it later and kept out of this epic to push toward a release.
 
 ## Context
 

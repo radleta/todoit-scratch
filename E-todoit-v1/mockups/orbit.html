@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>orbit</title>
+<style>
+:root{
+  --void:#140C33; --nebula:#3B1F6B; --star:#F3EEFF; --sun:#FFB347; --ice:#7DE2FC; --rose:#F48FB5; --lav:#B9A5FF; --moss:#9BE8B0; --deep-ink:#1A1033;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; min-height:100vh; color:var(--star);
+  font:16px/1.5 Futura,"Century Gothic","Avenir Next","Segoe UI",system-ui,sans-serif;
+  background:
+    radial-gradient(1.5px 1.5px at 12% 18%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 33% 62%, #fff 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 58% 12%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 77% 44%, #fff 50%, transparent 51%),
+    radial-gradient(2px 2px at 90% 80%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 22% 88%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 48% 36%, #fff 50%, transparent 51%),
+    radial-gradient(ellipse 60% 40% at 75% 25%, rgba(185,165,255,.22), transparent 70%),
+    radial-gradient(ellipse 50% 40% at 15% 75%, rgba(244,143,181,.14), transparent 70%),
+    linear-gradient(160deg, var(--nebula), var(--void) 60%);
+  background-size:220px 220px,260px 260px,300px 300px,240px 240px,330px 330px,280px 280px,200px 200px,100% 100%,100% 100%,100% 100%;
+  background-attachment:fixed;
+}
+.wrap{max-width:1000px; margin:0 auto; padding:26px 20px 48px}
+header{display:flex; flex-wrap:wrap; align-items:center; gap:10px 22px}
+h1{margin:0; font-size:2.2rem; font-weight:500; letter-spacing:.35em; text-transform:lowercase}
+h1::first-letter{color:var(--sun)}
+.tally{margin:0}
+.tally b{color:var(--sun)}
+.mute{margin-left:auto; border:1px solid var(--lav); background:transparent; color:var(--star); border-radius:8px; padding:7px 14px; font:inherit; cursor:pointer}
+.mute::before{content:"\25C9  "; color:var(--moss)}
+form{display:flex; gap:10px; margin:24px 0 14px}
+input{flex:1; min-width:0; padding:13px 16px; border-radius:8px; border:1px solid rgba(243,238,255,.35); background:rgba(20,12,51,.75); color:var(--star); font:inherit}
+input::placeholder{color:rgba(243,238,255,.68)}
+.add{padding:0 22px; border-radius:8px; border:0; background:var(--sun); color:var(--deep-ink); font:inherit; font-weight:700; cursor:pointer}
+:focus-visible{outline:3px solid var(--ice); outline-offset:3px}
+.filters{display:flex; gap:18px; flex-wrap:wrap; border-bottom:1px solid rgba(243,238,255,.18)}
+.filters button{border:0; border-bottom:3px solid transparent; background:transparent; color:rgba(243,238,255,.8); font:inherit; padding:6px 2px 8px; cursor:pointer}
+.filters button[aria-pressed=true]{color:var(--star); border-bottom-color:var(--sun)}
+.filters span{margin-left:6px; color:var(--sun)}
+.layout{display:grid; grid-template-columns:1fr 270px; gap:30px; margin-top:20px}
+.sky{position:relative; display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:28px 36px; padding:30px 0;
+  background:radial-gradient(ellipse 48% 38% at 50% 50%, transparent 98%, rgba(243,238,255,.12) 99% 100%, transparent 100.5%)}
+.planet{
+  position:relative; width:var(--s); height:var(--s); flex:none; border-radius:50%; display:grid; place-items:center; padding:calc(var(--s) * .16);
+  text-align:center; color:var(--deep-ink); font:inherit; font-weight:600; font-size:.95rem; cursor:pointer; border:0;
+  background:radial-gradient(circle at 34% 30%, color-mix(in srgb, var(--c) 55%, #fff), var(--c) 55%, color-mix(in srgb, var(--c) 70%, #2a1550) 100%);
+  box-shadow:0 0 30px color-mix(in srgb, var(--c) 40%, transparent);
+}
+.ringed::after{content:""; position:absolute; left:-18%; right:-18%; top:44%; height:14%; border-radius:50%; border:2px solid rgba(255,179,71,.8); transform:rotate(-14deg); pointer-events:none; z-index:-1}
+.planet:nth-child(1){align-self:flex-start}
+.planet:nth-child(5){align-self:flex-end}
+.hint{text-align:center; font-size:.9rem; color:rgba(243,238,255,.78); margin:0}
+aside{display:flex; flex-direction:column; gap:20px}
+.panel{border:1px solid rgba(243,238,255,.2); border-radius:12px; padding:16px; background:rgba(20,12,51,.7)}
+.panel h2{margin:0 0 10px; font-size:1.05rem; font-weight:600; letter-spacing:.08em}
+.done{list-style:none; margin:0; padding:0; display:grid; gap:10px}
+.done li{display:flex; align-items:center; gap:10px}
+.done li::before{content:"\2726"; color:var(--sun)}
+.done s{flex:1; color:rgba(243,238,255,.82)}
+.restore{border:1px solid rgba(243,238,255,.45); background:none; color:var(--star); border-radius:6px; font:inherit; font-size:.78rem; padding:2px 8px; cursor:pointer}
+.empty{text-align:center; padding:22px 14px}
+.empty .lone{width:46px; height:46px; margin:0 auto 14px; border-radius:50%; border:1.5px dashed var(--lav); position:relative}
+.empty .lone::after{content:""; position:absolute; width:8px; height:8px; border-radius:50%; background:var(--sun); top:-4px; left:50%; margin-left:-4px}
+.empty p{margin:0 0 4px; font-weight:600}
+.empty small{color:rgba(243,238,255,.8)}
+.caption{font-size:.75rem; color:rgba(243,238,255,.7); margin:0 0 6px}
+@media (max-width:760px){
+  .layout{grid-template-columns:1fr}
+  .planet:nth-child(n){align-self:center}
+  h1{font-size:1.8rem}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>orbit</h1>
+    <p class="tally"><b>128</b> worlds turned to stardust</p>
+    <button class="mute" aria-pressed="false">Comms on</button>
+  </header>
+
+  <form onsubmit="return false">
+    <input aria-label="New todo" placeholder="Name a mission">
+    <button class="add">Launch</button>
+  </form>
+
+  <nav class="filters" aria-label="Filter todos">
+    <button aria-pressed="true">All<span>8</span></button>
+    <button aria-pressed="false">In orbit<span>5</span></button>
+    <button aria-pressed="false">Stardust<span>3</span></button>
+  </nav>
+
+  <div class="layout">
+    <main>
+      <div class="sky">
+        <button class="planet" style="--s:130px;--c:var(--ice)">Buy oat milk</button>
+        <button class="planet ringed" style="--s:220px;--c:var(--sun)">Write the quarterly report intro and send it to Dana for a first read</button>
+        <button class="planet" style="--s:150px;--c:var(--rose)">Call the dentist</button>
+        <button class="planet" style="--s:185px;--c:var(--lav)">Fix the squeaky hinge on the back door</button>
+        <button class="planet" style="--s:130px;--c:var(--moss)">Water plants</button>
+      </div>
+      <p class="hint">Tap a world to turn it to stardust.</p>
+    </main>
+    <aside>
+      <section class="panel">
+        <h2>Stardust</h2>
+        <ul class="done">
+          <li><s>Pay rent</s><button class="restore">Relaunch</button></li>
+          <li><s>Return library books</s><button class="restore">Relaunch</button></li>
+          <li><s>Reply to Sam about Saturday</s><button class="restore">Relaunch</button></li>
+        </ul>
+      </section>
+      <div>
+        <p class="caption">Empty state</p>
+        <section class="panel empty">
+          <div class="lone"></div>
+          <p>Empty sky.</p>
+          <small>Launch a mission to light it up.</small>
+        </section>
+      </div>
+    </aside>
+  </div>
+</div>
+</body>
+</html>

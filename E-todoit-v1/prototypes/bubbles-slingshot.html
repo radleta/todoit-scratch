@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>todoit bubbles: slingshot</title>
+<!-- Throwaway prototype for the bubble-interaction-prototype spike. Generated from a shared core plus one variant; edit freely. -->
+<style>
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#222;background:#fff;display:flex;flex-direction:column;height:100dvh}
+button,input,select{font:inherit}
+button{cursor:pointer;border:1px solid #bbb;background:#fff;border-radius:6px;padding:4px 10px}
+header{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between;padding:8px 16px;border-bottom:1px solid #e3e3e3}
+h1{font-size:18px;margin:0}
+h1 small{font-weight:400;color:#777;font-size:13px}
+.tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.tally b{display:inline-block;min-width:1.5em;text-align:center}
+.tally.bump b{animation:bump .35s ease-out}
+@keyframes bump{40%{transform:scale(1.6)}}
+.filters{display:flex;gap:6px;padding:8px 16px}
+.filters button[aria-selected=true]{background:#222;color:#fff;border-color:#222}
+.filters .n{opacity:.7;margin-left:4px}
+main{flex:1;display:flex;flex-direction:column;min-height:0;padding:0 16px 8px;gap:8px}
+#field{position:relative;flex:1;min-height:200px;overflow:hidden;background:#f5f6f8;border:1px solid #e3e3e3;border-radius:10px;touch-action:manipulation}
+#done{max-height:32%;overflow:auto;border:1px solid #e3e3e3;border-radius:10px;padding:8px 10px}
+.f-done #field{display:none}
+.f-done #done{max-height:none;flex:1}
+.f-active #done{display:none}
+#done h2{font-size:13px;margin:0 0 6px;color:#555;font-weight:600}
+#done .none{color:#888;margin:4px 0}
+#empty{position:absolute;inset:auto 0 18px 0;text-align:center;color:#777;pointer-events:none}
+#empty b{display:block;font-size:16px;color:#444}
+.bubble{position:absolute;left:0;top:0;border-radius:50%;display:grid;place-items:center;text-align:center;padding:12px;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:manipulation;
+  background:radial-gradient(circle at 32% 28%,#fff 0 10%,hsl(var(--h) 25% 95%) 38%,hsl(var(--h) 18% 85%) 100%);
+  border:1.5px solid hsl(var(--h) 12% 68%);box-shadow:inset -6px -8px 14px rgba(0,0,0,.06);font-size:13px;line-height:1.15;will-change:transform}
+.bubble:focus-visible{outline:3px solid #222;outline-offset:2px}
+.bubble .t{pointer-events:none;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;word-break:break-word}
+.bubble .x{position:absolute;top:0;right:0;width:24px;height:24px;padding:0;border-radius:50%;line-height:1;opacity:0}
+.bubble:hover .x,.bubble:focus-within .x{opacity:1}
+@media (hover:none){.bubble .x{opacity:.75}}
+.bubble.practice{border-style:dashed;color:#666}
+.bubble.preview{pointer-events:none;opacity:.85}
+.composer{display:flex;gap:8px;padding:8px 16px 12px;border-top:1px solid #e3e3e3;flex-wrap:wrap;align-items:center}
+.composer input{flex:1;min-width:0;padding:8px 10px;border:1px solid #bbb;border-radius:6px}
+#blow{padding:8px 16px;font-weight:600;touch-action:none;user-select:none;-webkit-user-select:none}
+#blow.held{background:#222;color:#fff}
+.composer .hint{flex-basis:100%;color:#888;font-size:12px;margin:0}
+#fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:5}
+#toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);z-index:10;background:#222;color:#fff;border-radius:8px;padding:8px 8px 8px 14px;display:flex;gap:12px;align-items:center;max-width:calc(100% - 32px);overflow:hidden}
+#toast .msg{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#toast .undo{background:#fff;color:#222;border:0;font-weight:600}
+#toast .bar{position:absolute;left:0;bottom:0;height:3px;background:#aaa;width:100%;animation:drain 5s linear forwards}
+@keyframes drain{to{width:0}}
+.reduced main *{animation-duration:0s!important;transition-duration:0s!important}
+.reduced .tally.bump b{animation:none}
+
+/* ---- variant: slingshot ---- */
+.splats{display:flex;flex-wrap:wrap;gap:8px}
+.splat{display:flex;align-items:center;gap:8px;padding:8px 12px;background:hsl(var(--h) 14% 90%);color:#666;max-width:100%}
+.splat s{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.splat .acts{display:flex;gap:4px;flex-shrink:0}
+.splat .acts button{padding:2px 8px;font-size:12px}
+.splat.new{animation:splat .45s cubic-bezier(.2,1.6,.4,1)}
+@keyframes splat{0%{transform:scale(1.7,.3);opacity:0}60%{transform:scale(.9,1.15)}100%{transform:none}}
+
+</style>
+</head>
+<body class="f-all">
+<header>
+  <h1>todoit <small>bubble prototype: slingshot</small></h1>
+  <div class="tools">
+    <span id="tally" class="tally">Popped all-time: <b>0</b></span>
+    <button id="mute" aria-pressed="false">Sound: on</button>
+    <label>Motion <select id="motion"><option value="system">follow system</option><option value="full">full</option><option value="reduced">reduced</option></select></label>
+  </div>
+</header>
+<nav class="filters" aria-label="Filter">
+  <button data-f="all" aria-selected="true">All<span class="n"></span></button>
+  <button data-f="active" aria-selected="false">Active<span class="n"></span></button>
+  <button data-f="done" aria-selected="false">Done<span class="n"></span></button>
+</nav>
+<main>
+  <section id="field" aria-label="Bubbles">
+    <div id="empty" hidden><b>Nothing to pop.</b>Type a todo, hold the button, and fire one in. Or pop the practice bubble.</div>
+  </section>
+  <section id="done" aria-label="Done"></section>
+</main>
+<footer class="composer">
+  <input id="text" placeholder="What needs popping?" maxlength="80" autocomplete="off" aria-label="New todo">
+  <button id="blow">Hold to blow</button>
+  <p class="hint">Type, then hold “Hold to blow”: the longer you hold, the bigger and faster it flies. Enter fires a medium shot. Tap a bubble to pop it.</p>
+</footer>
+<canvas id="fx" aria-hidden="true"></canvas>
+<div id="toast" role="status" hidden><span class="msg"></span><button class="undo">Undo</button><i class="bar"></i></div>
+<script>
+'use strict';
+// Shared prototype core: state, sound, physics, particles, add/pop/restore/delete. The variant object V below it decides the feel.
+const $ = (s, r = document) => r.querySelector(s);
+const field = $('#field'), doneEl = $('#done'), fxc = $('#fx'), fx = fxc.getContext('2d');
+const input = $('#text'), blowBtn = $('#blow'), toastEl = $('#toast');
+const S = { todos: [], tally: 0, filter: 'all', muted: false, motion: 'system', nextId: 1, justPopped: null };
+const mq = matchMedia('(prefers-reduced-motion: reduce)');
+const reduced = () => S.motion === 'reduced' || (S.motion === 'system' && mq.matches);
+const rand = (a, b) => a + Math.random() * (b - a);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const hueOf = id => (id * 137.508) % 360;
+const seeded = (id, k) => { const s = Math.sin(id * 12.9898 + k * 78.233) * 43758.5453; return s - Math.floor(s); };
+const findTodo = id => S.todos.find(t => t.id === id);
+const fieldRect = () => field.getBoundingClientRect();
+
+// ---- sound: the AudioContext is only created by the first tap or key press ----
+let ac = null, noiseBuf = null;
+function wake() {
+  if (!ac) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    ac = new AC();
+    noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  if (ac.state === 'suspended') ac.resume();
+}
+addEventListener('pointerdown', wake, true);
+addEventListener('keydown', wake, true);
+function env(g, t, peak, dur) {
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(peak, t + 0.006);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+}
+function tone(f0, f1, dur, peak, type = 'sine', delay = 0) {
+  if (S.muted || !ac) return;
+  const t = ac.currentTime + delay, o = ac.createOscillator(), g = ac.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(f0, t);
+  o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  env(g, t, peak, dur);
+  o.connect(g).connect(ac.destination);
+  o.start(t); o.stop(t + dur + 0.02);
+}
+function hiss(freq, q, dur, peak, delay = 0, freq1) {
+  if (S.muted || !ac) return;
+  const t = ac.currentTime + delay, s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+  s.buffer = noiseBuf; f.type = 'bandpass'; f.Q.value = q;
+  f.frequency.setValueAtTime(freq, t);
+  if (freq1) f.frequency.exponentialRampToValueAtTime(freq1, t + dur);
+  env(g, t, peak, dur);
+  s.connect(f).connect(g).connect(ac.destination);
+  s.start(t); s.stop(t + dur + 0.02);
+}
+function hum() {
+  if (S.muted || !ac) return () => {};
+  const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+  o.type = 'triangle';
+  o.frequency.setValueAtTime(140, t); o.frequency.linearRampToValueAtTime(520, t + 1.2);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.05, t + 0.08);
+  o.connect(g).connect(ac.destination); o.start(t);
+  return () => {
+    const n = ac.currentTime;
+    g.gain.cancelScheduledValues(n);
+    g.gain.setValueAtTime(Math.max(g.gain.value, 0.0001), n);
+    g.gain.exponentialRampToValueAtTime(0.0001, n + 0.05);
+    o.stop(n + 0.06);
+  };
+}
+const sfx = {
+  whoosh: p => hiss(500, 0.7, 0.22 + p * 0.25, 0.15 + p * 0.4, 0, 2500 + p * 3500),
+  pop: (k = 1, pitch = 1) => { const j = pitch * rand(0.88, 1.12); hiss(2200 * j, 1.2, 0.07, 0.7 * k); tone(1000 * j, 160 * j, 0.1, 0.45 * k); },
+  fizzle: () => hiss(5000, 2, 0.35, 0.05, 0, 1200),
+  restore: () => { tone(300, 700, 0.18, 0.18); tone(450, 1050, 0.18, 0.1, 'sine', 0.06); },
+  nope: () => tone(200, 150, 0.12, 0.08, 'square'),
+};
+
+// ---- particles on a fixed canvas, viewport coordinates ----
+const parts = [];
+function burst(x, y, n, o = {}) {
+  for (let i = 0; i < n; i++) {
+    const a = o.up ? rand(-Math.PI * 0.95, -Math.PI * 0.05) : rand(0, 6.283), s = rand(0.3, 1) * (o.spd || 300);
+    parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0, max: rand(0.6, 1) * (o.life || 0.6),
+      size: rand(0.6, 1.4) * (o.size || 3), g: o.g ?? 400, c: `hsl(${o.hue ?? rand(0, 360)} ${o.sat ?? 55}% ${o.lit ?? 58}%)` });
+  }
+}
+const ringFx = (x, y, r0, r1, max = 0.35) => parts.push({ ring: true, x, y, r0, r1, life: 0, max, c: 'rgba(0,0,0,.35)' });
+const floatText = (x, y, text) => parts.push({ text, x, y, vx: 0, vy: -70, g: 0, life: 0, max: 0.9, size: 16, c: '#333' });
+function drawFx(dt) {
+  const dpr = devicePixelRatio || 1, w = innerWidth, h = innerHeight;
+  if (fxc.width !== Math.round(w * dpr) || fxc.height !== Math.round(h * dpr)) { fxc.width = Math.round(w * dpr); fxc.height = Math.round(h * dpr); }
+  fx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  fx.clearRect(0, 0, w, h);
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const p = parts[i];
+    p.life += dt;
+    if (p.life >= p.max) { parts.splice(i, 1); continue; }
+    const k = 1 - p.life / p.max;
+    fx.globalAlpha = k;
+    if (p.ring) {
+      fx.strokeStyle = p.c; fx.lineWidth = 3 * k; fx.beginPath();
+      fx.arc(p.x, p.y, p.r0 + (p.r1 - p.r0) * (1 - k), 0, 6.283); fx.stroke();
+      continue;
+    }
+    p.vy += p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.99;
+    fx.fillStyle = p.c;
+    if (p.text) { fx.font = `bold ${p.size}px system-ui,sans-serif`; fx.textAlign = 'center'; fx.fillText(p.text, p.x, p.y); continue; }
+    fx.beginPath(); fx.arc(p.x, p.y, p.size * (0.5 + 0.5 * k), 0, 6.283); fx.fill();
+  }
+  fx.globalAlpha = 1;
+}
+function shake(px = 6) {
+  if (reduced()) return;
+  field.animate([{ transform: 'none' }, { transform: `translate(${-px}px,${px / 2}px)` }, { transform: `translate(${px}px,${-px / 2}px)` }, { transform: 'none' }], { duration: 170 });
+}
+
+// ---- bubbles and physics; positions are field-local ----
+const bodies = new Map();
+const radiusFor = (text, charge) => clamp(34 + text.length * 1.1, 40, 72) * (0.85 + 0.35 * charge);
+function spawn(todo, x, y, vx, vy, r) {
+  const el = document.createElement('div');
+  const label = todo ? todo.text : (V.practiceLabel || 'pop me');
+  el.className = 'bubble' + (todo ? '' : ' practice');
+  el.tabIndex = 0;
+  el.setAttribute('role', 'button');
+  el.setAttribute('aria-label', todo ? 'Pop to complete: ' + label : 'Practice bubble, pop it');
+  el.dataset.id = todo ? todo.id : 'practice';
+  el.innerHTML = '<span class="t"></span>';
+  el.firstChild.textContent = label;
+  if (todo) {
+    const x = document.createElement('button');
+    x.className = 'x'; x.textContent = '×'; x.setAttribute('aria-label', 'Delete ' + label);
+    el.append(x);
+  }
+  el.style.width = el.style.height = 2 * r + 'px';
+  el.style.setProperty('--h', todo ? hueOf(todo.id) : 210);
+  field.append(el);
+  const b = { id: todo ? todo.id : 'practice', todo, el, x, y, vx, vy, r, m: r * r, wob: 0.7, ph: 0 };
+  bodies.set(b.id, b);
+  place(b);
+  return b;
+}
+function place(b) {
+  const s = Math.sin(b.ph) * b.wob * 0.09;
+  b.el.style.transform = `translate(${b.x - b.r}px,${b.y - b.r}px) scale(${1 + s},${1 - s})`;
+}
+function physics(dt, W, H) {
+  const P = V.physics, list = [...bodies.values()];
+  for (const b of list) {
+    let ax = rand(-1, 1) * P.wander, ay = P.gravity + rand(-1, 1) * P.wander;
+    if (P.pull) { ax += (W / 2 - b.x) * P.pull; ay += (H * 0.45 - b.y) * P.pull; }
+    b.vx += ax * dt; b.vy += ay * dt;
+    const damp = Math.pow(P.damping, dt * 60);
+    b.vx *= damp; b.vy *= damp;
+    if (P.minSpeed) {
+      const s = Math.hypot(b.vx, b.vy);
+      if (s < P.minSpeed) { const a = s ? Math.atan2(b.vy, b.vx) : rand(0, 6.283); b.vx = Math.cos(a) * P.minSpeed; b.vy = Math.sin(a) * P.minSpeed; }
+    }
+    b.x += b.vx * dt; b.y += b.vy * dt;
+    let hit = 0;
+    if (b.x < b.r) { b.x = b.r; hit = Math.abs(b.vx); b.vx = Math.abs(b.vx) * P.bounce; }
+    else if (b.x > W - b.r) { b.x = W - b.r; hit = Math.abs(b.vx); b.vx = -Math.abs(b.vx) * P.bounce; }
+    if (b.y < b.r) { b.y = b.r; hit = Math.max(hit, Math.abs(b.vy)); b.vy = Math.abs(b.vy) * P.bounce; }
+    else if (b.y > H - b.r) { b.y = H - b.r; hit = Math.max(hit, Math.abs(b.vy)); b.vy = -Math.abs(b.vy) * P.bounce; }
+    if (hit > 60) { b.wob = Math.min(1, b.wob + hit / 1500); if (V.onHit) V.onHit(b, hit); }
+  }
+  for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) collide(list[i], list[j], P);
+  for (const b of list) { b.wob *= Math.pow(0.04, dt); b.ph += dt * 16; place(b); }
+}
+function collide(a, b, P) {
+  const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 0.01, o = a.r + b.r - d;
+  if (o <= 0) return;
+  const nx = dx / d, ny = dy / d, tm = a.m + b.m;
+  a.x -= nx * o * b.m / tm; a.y -= ny * o * b.m / tm;
+  b.x += nx * o * a.m / tm; b.y += ny * o * a.m / tm;
+  const rv = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+  if (rv >= 0) return;
+  const imp = -(1 + P.bounce) * rv / (1 / a.m + 1 / b.m);
+  a.vx -= imp * nx / a.m; a.vy -= imp * ny / a.m;
+  b.vx += imp * nx / b.m; b.vy += imp * ny / b.m;
+  const k = Math.min(1, -rv / 900);
+  a.wob = Math.min(1, a.wob + k); b.wob = Math.min(1, b.wob + k);
+  if (-rv > 150 && V.onHit) V.onHit(a, -rv);
+}
+// Reduced motion: no drifting, bubbles sit in reading order.
+function layoutStatic(W) {
+  let x = 12, y = 12, rowH = 0;
+  for (const b of bodies.values()) {
+    const d = 2 * b.r;
+    if (x + d > W - 12 && x > 12) { x = 12; y += rowH + 12; rowH = 0; }
+    b.x = x + b.r; b.y = y + b.r; b.vx = b.vy = 0; b.wob = 0;
+    x += d + 12; rowH = Math.max(rowH, d);
+    place(b);
+  }
+}
+function fadeOut(el, ms = 160) {
+  el.style.pointerEvents = 'none';
+  el.style.transition = `opacity ${ms}ms, transform ${ms}ms`;
+  el.style.opacity = 0;
+  setTimeout(() => el.remove(), ms);
+}
+function deflate(b) {
+  if (reduced()) return fadeOut(b.el);
+  b.el.style.pointerEvents = 'none';
+  b.el.style.transition = 'transform .35s ease-in, opacity .35s ease-in';
+  b.el.style.transform = `translate(${b.x - b.r}px,${b.y - b.r}px) scale(.15)`;
+  b.el.style.opacity = 0;
+  setTimeout(() => b.el.remove(), 360);
+}
+const centerOf = b => { const fr = fieldRect(); return [fr.left + b.x, fr.top + b.y]; };
+
+// ---- actions: state changes happen at once, effects follow ----
+function launch(t, charge) {
+  const W = field.clientWidth || 320, H = field.clientHeight || 320, r = radiusFor(t.text, charge);
+  const spd = V.launchSpeed(charge), ang = -Math.PI / 2 + rand(-V.spread, V.spread);
+  const b = spawn(t, W / 2, H - r - 2, Math.cos(ang) * spd, Math.sin(ang) * spd, r);
+  if (!reduced() && V.onLaunch) V.onLaunch(b, charge);
+  return b;
+}
+function add(charge) {
+  const text = input.value.trim();
+  if (!text) return nudge();
+  const t = { id: S.nextId++, text, done: false, createdAt: Date.now(), doneAt: null };
+  S.todos.push(t);
+  input.value = '';
+  if (S.filter === 'done') S.filter = 'all';
+  render();
+  launch(t, charge);
+  sfx.whoosh(charge);
+}
+function pop(id) {
+  const t = findTodo(id);
+  if (!t || t.done) return;
+  t.done = true; t.doneAt = Date.now(); S.tally++; S.justPopped = id;
+  const b = bodies.get(id);
+  bodies.delete(id);
+  if (b) V.pop(b, t);
+  render();
+}
+let practiceTimer = 0;
+function popPractice() {
+  const b = bodies.get('practice');
+  if (!b) return;
+  bodies.delete('practice');
+  V.pop(b, null);
+  practiceTimer = setTimeout(() => { practiceTimer = 0; ensurePractice(); }, 1600);
+}
+function ensurePractice() {
+  const empty = S.filter !== 'done' && !S.todos.some(t => !t.done);
+  $('#empty').hidden = !empty;
+  if (empty && !bodies.has('practice') && !practiceTimer) {
+    const W = field.clientWidth || 320, H = field.clientHeight || 320;
+    spawn(null, W / 2, H * 0.4, rand(-80, 80), rand(-80, 80), 44);
+  }
+  if (!empty && bodies.has('practice')) { const b = bodies.get('practice'); bodies.delete('practice'); fadeOut(b.el); }
+}
+function restore(id, fromEl) {
+  const t = findTodo(id);
+  if (!t || !t.done) return;
+  t.done = false; t.doneAt = null;
+  const src = fromEl ? fromEl.getBoundingClientRect() : null;
+  if (V.restore) V.restore(t, src); else launch(t, 0.6);
+  sfx.restore();
+  render();
+}
+let undoFn = null, toastTimer = 0;
+function del(id) {
+  const i = S.todos.findIndex(t => t.id === id);
+  if (i < 0) return;
+  const [t] = S.todos.splice(i, 1);
+  const b = bodies.get(id);
+  if (b) { bodies.delete(id); deflate(b); }
+  sfx.fizzle();
+  clearTimeout(toastTimer);
+  toastEl.hidden = false;
+  $('.msg', toastEl).textContent = `Deleted “${t.text}”`;
+  const bar = $('.bar', toastEl);
+  bar.style.animation = 'none'; void bar.offsetWidth; bar.style.animation = '';
+  undoFn = () => {
+    S.todos.splice(Math.min(i, S.todos.length), 0, t);
+    hideToast();
+    render();
+    if (!t.done) launch(t, 0.5);
+    sfx.restore();
+  };
+  toastTimer = setTimeout(hideToast, 5000);
+  render();
+}
+function hideToast() { toastEl.hidden = true; undoFn = null; clearTimeout(toastTimer); }
+$('.undo', toastEl).addEventListener('click', () => undoFn && undoFn());
+function nudge() {
+  sfx.nope();
+  input.focus();
+  if (!reduced()) input.animate([{ transform: 'none' }, { transform: 'translateX(-6px)' }, { transform: 'translateX(6px)' }, { transform: 'none' }], { duration: 200 });
+}
+
+// ---- blowing a new bubble: hold to grow it, release to shoot it ----
+let charging = null;
+const chargeNow = () => clamp((performance.now() - charging.t0) / 1200, 0, 1);
+function startCharge() {
+  if (charging) return;
+  if (!input.value.trim()) return nudge();
+  const el = document.createElement('div');
+  el.className = 'bubble preview';
+  el.innerHTML = '<span class="t"></span>';
+  el.firstChild.textContent = input.value.trim();
+  el.style.setProperty('--h', hueOf(S.nextId));
+  if (S.filter === 'done') { S.filter = 'all'; render(); }
+  field.append(el);
+  charging = { t0: performance.now(), stop: hum(), el };
+  blowBtn.classList.add('held');
+}
+function endCharge() {
+  if (!charging) return;
+  const c = chargeNow();
+  charging.stop(); charging.el.remove(); charging = null;
+  blowBtn.classList.remove('held');
+  add(c);
+}
+function drawPreview() {
+  if (!charging) return;
+  const c = chargeNow(), r = radiusFor(charging.el.textContent, c), W = field.clientWidth, H = field.clientHeight;
+  const j = reduced() ? 0 : Math.sin(performance.now() / 40) * c * 2;
+  charging.el.style.width = charging.el.style.height = 2 * r + 'px';
+  charging.el.style.transform = `translate(${W / 2 - r + j}px,${H - 2 * r - 4}px)`;
+}
+blowBtn.addEventListener('pointerdown', e => { if (e.button) return; blowBtn.setPointerCapture(e.pointerId); startCharge(); });
+blowBtn.addEventListener('pointerup', endCharge);
+blowBtn.addEventListener('pointercancel', endCharge);
+blowBtn.addEventListener('keydown', e => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) { e.preventDefault(); startCharge(); } });
+blowBtn.addEventListener('keyup', e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); endCharge(); } });
+blowBtn.addEventListener('contextmenu', e => e.preventDefault());
+input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); add(0.55); } });
+
+// ---- field and done-shelf input ----
+field.addEventListener('pointerdown', e => {
+  const el = e.target.closest('.bubble');
+  if (!el || el.classList.contains('preview') || e.target.closest('.x')) return;
+  if (el.dataset.id === 'practice') popPractice(); else pop(+el.dataset.id);
+});
+field.addEventListener('click', e => { const x = e.target.closest('.x'); if (x) del(+x.parentElement.dataset.id); });
+field.addEventListener('keydown', e => {
+  const el = e.target.classList.contains('bubble') ? e.target : null;
+  if (!el) return;
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (el.dataset.id === 'practice') popPractice(); else pop(+el.dataset.id); }
+  if ((e.key === 'Delete' || e.key === 'Backspace') && el.dataset.id !== 'practice') del(+el.dataset.id);
+});
+doneEl.addEventListener('click', e => {
+  const btn = e.target.closest('[data-act]');
+  if (!btn) return;
+  if (btn.dataset.act === 'show-done') { S.filter = 'done'; render(); return; }
+  const id = +btn.closest('[data-id]').dataset.id;
+  if (btn.dataset.act === 'restore') restore(id, btn.closest('[data-id]'));
+  if (btn.dataset.act === 'delete') del(id);
+});
+document.querySelectorAll('.filters button').forEach(b => b.addEventListener('click', () => { S.filter = b.dataset.f; render(); }));
+$('#mute').addEventListener('click', () => {
+  S.muted = !S.muted;
+  $('#mute').textContent = 'Sound: ' + (S.muted ? 'off' : 'on');
+  $('#mute').setAttribute('aria-pressed', S.muted);
+});
+$('#motion').addEventListener('change', e => { S.motion = e.target.value; render(); });
+mq.addEventListener('change', render);
+
+// ---- render chrome and the done shelf ----
+let shownTally = 0;
+function render() {
+  document.body.className = 'f-' + S.filter + (reduced() ? ' reduced' : '');
+  const act = S.todos.filter(t => !t.done).length, dn = S.todos.length - act;
+  const n = { all: S.todos.length, active: act, done: dn };
+  document.querySelectorAll('.filters button').forEach(b => {
+    b.setAttribute('aria-selected', b.dataset.f === S.filter);
+    $('.n', b).textContent = n[b.dataset.f];
+  });
+  const tal = $('#tally');
+  $('b', tal).textContent = S.tally;
+  if (S.tally !== shownTally) { tal.classList.remove('bump'); void tal.offsetWidth; tal.classList.add('bump'); shownTally = S.tally; }
+  V.renderDone(doneEl, S.todos.filter(t => t.done).sort((a, b) => b.doneAt - a.doneAt));
+  ensurePractice();
+  if (V.render) V.render(act, dn);
+  S.justPopped = null;
+}
+const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const ago = ms => { const s = Math.round((Date.now() - ms) / 1000); return s < 60 ? 'just now' : s < 3600 ? Math.round(s / 60) + 'm ago' : Math.round(s / 3600) + 'h ago'; };
+
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.033, (now - last) / 1000);
+  last = now;
+  const W = field.clientWidth, H = field.clientHeight;
+  if (W && H) { if (reduced()) layoutStatic(W); else physics(dt, W, H); }
+  drawPreview();
+  drawFx(dt);
+  if (V.frame) V.frame(dt, W, H);
+  requestAnimationFrame(frame);
+}
+function boot() {
+  if (V.init) V.init();
+  ['Water the plants', 'Reply to Sam', 'Book dentist'].forEach((text, i) => {
+    const t = { id: S.nextId++, text, done: false, createdAt: Date.now(), doneAt: null };
+    S.todos.push(t);
+    const W = field.clientWidth || 320, H = field.clientHeight || 320;
+    spawn(t, W * (0.3 + 0.2 * i), H * 0.4, rand(-60, 60), rand(-60, 60), radiusFor(text, 0.5));
+  });
+  render();
+  requestAnimationFrame(frame);
+}
+
+// ---- variant: slingshot ----
+// Impact: near-frictionless bubbles ricochet forever; a pop is a blast that shoves its neighbours and leaves a splat.
+let lastBonk = 0;
+const V = {
+  physics: { gravity: 0, pull: 0, wander: 20, damping: 0.997, bounce: 0.92, minSpeed: 28 },
+  spread: 0.5,
+  launchSpeed: c => 550 + c * 1400,
+  practiceLabel: 'pop me',
+  onLaunch(b, c) {
+    const [x, y] = centerOf(b);
+    burst(x, y + b.r, 8 + c * 22, { up: true, spd: 260 + c * 200, g: 700, life: 0.5, sat: 0, lit: 60 });
+    b.wob = 1;
+    shake(2 + c * 4);
+  },
+  onHit(b, v) {
+    const now = performance.now();
+    if (v < 320 || now - lastBonk < 60) return;
+    lastBonk = now;
+    tone(240, 120, 0.06, clamp(v / 6000, 0.02, 0.1), 'triangle');
+  },
+  pop(b, t) {
+    sfx.pop(1.25);
+    tone(110, 40, 0.2, 0.45);
+    if (reduced()) return fadeOut(b.el);
+    const [x, y] = centerOf(b);
+    b.el.remove();
+    burst(x, y, 40, { spd: 560, g: 300, life: 0.75, size: 3.5 });
+    ringFx(x, y, b.r * 0.8, b.r * 2.4 + 60);
+    for (const o of bodies.values()) {
+      const dx = o.x - b.x, dy = o.y - b.y, d = Math.hypot(dx, dy) || 1;
+      if (d > 280) continue;
+      const f = (1 - d / 280) * 1000;
+      o.vx += dx / d * f; o.vy += dy / d * f; o.wob = 1;
+    }
+    shake(7);
+  },
+  renderDone(el, done) {
+    el.innerHTML = '<h2>Splats: every pop leaves one</h2>' + (done.length ? '<div class="splats">' + done.map(t => {
+      const br = [0, 1, 2, 3, 4, 5, 6, 7].map(k => 35 + Math.round(seeded(t.id, k) * 30) + '%');
+      return `<div class="splat${t.id === S.justPopped ? ' new' : ''}" data-id="${t.id}" style="--h:${hueOf(t.id)};border-radius:${br.slice(0, 4).join(' ')} / ${br.slice(4).join(' ')}">
+        <s>${esc(t.text)}</s><span class="acts"><button data-act="restore">Restore</button><button data-act="delete" aria-label="Delete ${esc(t.text)}">×</button></span></div>`;
+    }).join('') + '</div>' : '<p class="none">No splats yet. Pop a bubble and it lands here.</p>');
+  },
+  restore(t, src) {
+    const b = launch(t, 0.7);
+    if (src && !reduced() && field.clientWidth) {
+      const fr = fieldRect();
+      b.x = clamp(src.left + src.width / 2 - fr.left, b.r, fr.width - b.r);
+      b.y = fr.height - b.r - 2;
+      b.vx = rand(-200, 200);
+    }
+    b.wob = 1;
+  },
+};
+
+boot();
+</script>
+</body>
+</html>

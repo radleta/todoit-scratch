@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>washday</title>
+<style>
+:root{
+  --sky:#BFE3F7; --sky-hi:#E9F6FD; --sun:#FFE27A; --grass:#5FA36B; --ink:#1E3A5F; --pink:#F2A6C8; --mint:#9EE3CF; --lilac:#C3B5F2;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; min-height:100vh; color:var(--ink);
+  font:16px/1.45 ui-rounded,"Arial Rounded MT Bold","Segoe UI","Century Gothic",system-ui,sans-serif;
+  background:
+    radial-gradient(circle at 88% 6%, var(--sun) 0 60px, rgba(255,226,122,.35) 61px 110px, transparent 111px),
+    radial-gradient(ellipse 70% 120px at 20% 100%, var(--grass) 98%, transparent 100%),
+    radial-gradient(ellipse 60% 100px at 85% 100%, #4E9160 98%, transparent 100%),
+    linear-gradient(180deg, var(--sky-hi), var(--sky) 70%);
+  background-attachment:fixed;
+}
+.wrap{max-width:900px; margin:0 auto; padding:24px 20px 140px}
+header{display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 18px}
+h1{margin:0; font-size:2.8rem; font-weight:800; letter-spacing:-.02em; color:var(--ink)}
+.tally{margin:0; font-size:1rem}
+.tally b{background:#fff; border-radius:999px; padding:1px 10px; box-shadow:inset 0 0 0 2px var(--pink)}
+.mute{margin-left:auto; align-self:center; border:2px solid var(--ink); background:#fff; color:var(--ink); border-radius:14px; padding:7px 14px; font:inherit; font-weight:700; cursor:pointer}
+.mute::before{content:"\1F50A\FE0E  "}
+form{display:flex; gap:10px; margin:22px 0 14px; background:#fff; padding:6px; border-radius:20px; box-shadow:0 2px 0 var(--ink)}
+input{flex:1; min-width:0; padding:12px 14px; border:0; background:transparent; color:var(--ink); font:inherit; font-size:1.05rem}
+input::placeholder{color:#5A7290}
+.add{padding:0 22px; border:0; border-radius:14px; background:var(--ink); color:#fff; font:inherit; font-weight:800; cursor:pointer}
+:focus-visible{outline:3px solid #D0457F; outline-offset:3px}
+.filters{display:inline-flex; gap:4px; background:rgba(255,255,255,.7); padding:4px; border-radius:16px; flex-wrap:wrap}
+.filters button{border:0; background:transparent; color:var(--ink); font:inherit; padding:6px 14px; border-radius:12px; cursor:pointer}
+.filters button[aria-pressed=true]{background:var(--ink); color:#fff; font-weight:700}
+.filters span{display:inline-block; min-width:1.6em; margin-left:6px; font-weight:800}
+.field{position:relative; display:flex; flex-wrap:wrap; justify-content:space-around; align-items:center; gap:14px; padding:30px 0 20px}
+.bubble{
+  width:var(--s); height:var(--s); flex:none; border-radius:50%; display:grid; place-items:center; padding:calc(var(--s) * .17);
+  text-align:center; color:var(--ink); font:inherit; font-weight:700; font-size:.95rem; cursor:pointer;
+  border:0; transform:rotate(var(--r,0deg));
+  background:
+    radial-gradient(circle at 32% 24%, #fff 0 7%, rgba(255,255,255,0) 15%),
+    radial-gradient(circle at 70% 78%, rgba(255,255,255,.7) 0 3%, rgba(255,255,255,0) 7%),
+    radial-gradient(circle, rgba(255,255,255,.55) 58%, rgba(255,255,255,.25) 100%);
+  box-shadow:
+    inset 6px 0 10px -2px rgba(242,166,200,.85),
+    inset -6px 2px 10px -2px rgba(158,227,207,.95),
+    inset 0 -6px 12px -2px rgba(195,181,242,.9),
+    0 10px 24px rgba(30,58,95,.12);
+}
+.bubble:nth-child(2){margin-top:60px}
+.bubble:nth-child(4){margin-top:-30px}
+.lower{display:grid; grid-template-columns:1.4fr 1fr; gap:22px; margin-top:16px}
+.card{background:#fff; border-radius:22px; padding:16px 18px; box-shadow:0 2px 0 var(--ink)}
+.card h2{margin:0 0 10px; font-size:1.15rem}
+.done{list-style:none; margin:0; padding:0; display:grid; gap:8px}
+.done li{display:flex; align-items:center; gap:10px}
+.done li::before{content:""; flex:none; width:18px; height:18px; border-radius:50%;
+  background:radial-gradient(circle, transparent 40%, var(--pink) 42% 50%, transparent 52%), radial-gradient(circle at 80% 20%, var(--mint) 0 18%, transparent 20%)}
+.done s{flex:1; color:#3D5677}
+.restore{border:2px solid var(--ink); background:#fff; color:var(--ink); border-radius:10px; font:inherit; font-size:.8rem; font-weight:700; padding:2px 10px; cursor:pointer}
+.empty{text-align:center}
+.wand{width:64px; height:64px; margin:4px auto 10px; border-radius:50%; border:5px solid var(--lilac); position:relative}
+.wand::after{content:""; position:absolute; left:50%; top:100%; width:6px; height:34px; margin-left:-3px; background:var(--lilac); border-radius:3px}
+.empty p{margin:30px 0 2px; font-weight:800}
+.caption{font-size:.75rem; color:#3D5677; margin:0 0 6px}
+@media (max-width:700px){
+  .lower{grid-template-columns:1fr}
+  .bubble:nth-child(n){margin-top:0}
+  h1{font-size:2.2rem}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>washday</h1>
+    <p class="tally"><b>128</b> popped since you started</p>
+    <button class="mute" aria-pressed="false">Sound on</button>
+  </header>
+
+  <form onsubmit="return false">
+    <input aria-label="New todo" placeholder="Dip the wand and name a bubble">
+    <button class="add">Blow</button>
+  </form>
+
+  <nav class="filters" aria-label="Filter todos">
+    <button aria-pressed="true">All<span>8</span></button>
+    <button aria-pressed="false">Floating<span>5</span></button>
+    <button aria-pressed="false">Popped<span>3</span></button>
+  </nav>
+
+  <main class="field">
+    <button class="bubble" style="--s:140px;--r:-4deg">Buy oat milk</button>
+    <button class="bubble" style="--s:220px;--r:3deg">Write the quarterly report intro and send it to Dana for a first read</button>
+    <button class="bubble" style="--s:150px">Call the dentist</button>
+    <button class="bubble" style="--s:185px;--r:-3deg">Fix the squeaky hinge on the back door</button>
+    <button class="bubble" style="--s:135px;--r:5deg">Water plants</button>
+  </main>
+
+  <div class="lower">
+    <section class="card">
+      <h2>Popped</h2>
+      <ul class="done">
+        <li><s>Pay rent</s><button class="restore">Blow again</button></li>
+        <li><s>Return library books</s><button class="restore">Blow again</button></li>
+        <li><s>Reply to Sam about Saturday</s><button class="restore">Blow again</button></li>
+      </ul>
+    </section>
+    <div>
+      <p class="caption">Empty state</p>
+      <section class="card empty">
+        <div class="wand"></div>
+        <p>Nothing floating.</p>
+        <span>Blow a bubble for the first thing on your list.</span>
+      </section>
+    </div>
+  </div>
+</div>
+</body>
+</html>

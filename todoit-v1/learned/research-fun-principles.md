@@ -4,7 +4,8 @@ type: research
 scope: project
 target-domain: todoit-expert
 target-page: fun-principles
-status: captured
+status: ingested
+ingested-at: 2026-10-18T17:39:51.963Z
 ---
 
 ## What "fun" means in todoit: the five principles from the fun.md transcript

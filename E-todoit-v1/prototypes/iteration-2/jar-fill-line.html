@@ -1,0 +1,692 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>todoit washday: fill-line</title>
+<!-- Throwaway prototype, iteration 2 of the bubble-interaction-prototype spike. Washday look, jar + progress. Generated from a shared core plus one variant; edit freely. -->
+<style>
+:root{--sky:#BFE3F7;--sky-hi:#E9F6FD;--sun:#FFE27A;--grass:#5FA36B;--ink:#1E3A5F;--ink2:#3D5677;--pink:#F2A6C8;--mint:#9EE3CF;--lilac:#C3B5F2;--gold:#E0B020}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;min-height:100vh;color:var(--ink);
+  font:16px/1.45 ui-rounded,"Arial Rounded MT Bold","Segoe UI","Century Gothic",system-ui,sans-serif;
+  background:
+    radial-gradient(circle at 88% 6%,var(--sun) 0 60px,rgba(255,226,122,.35) 61px 110px,transparent 111px),
+    radial-gradient(ellipse 70% 120px at 20% 100%,var(--grass) 98%,transparent 100%),
+    radial-gradient(ellipse 60% 100px at 85% 100%,#4E9160 98%,transparent 100%),
+    linear-gradient(180deg,var(--sky-hi),var(--sky) 70%);
+}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid #D0457F;outline-offset:3px}
+.wrap{max-width:1000px;margin:0 auto;padding:20px 20px 140px}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px}
+h1{margin:0;font-size:2.6rem;font-weight:800;letter-spacing:-.02em;line-height:1}
+h1 small{display:block;font-size:.8rem;font-weight:700;letter-spacing:0;color:var(--ink2);margin-top:4px}
+.tally{margin:0}
+.tally b{display:inline-block;min-width:2.2em;text-align:center;background:#fff;border-radius:999px;padding:1px 10px;box-shadow:inset 0 0 0 2px var(--pink)}
+.tally.bump b{animation:bump .4s ease-out}
+@keyframes bump{40%{transform:scale(1.35)}}
+.tools{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.pill{border:2px solid var(--ink);background:#fff;border-radius:14px;padding:6px 12px;font-weight:700;cursor:pointer}
+.tools label{font-size:.85rem;font-weight:700}
+.tools select{border:2px solid var(--ink);background:#fff;border-radius:10px;padding:3px 6px;font-size:.85rem}
+.composer{display:flex;gap:10px;margin:18px 0 4px;background:#fff;padding:6px;border-radius:20px;box-shadow:0 2px 0 var(--ink)}
+.composer input{flex:1;min-width:0;padding:12px 14px;border:0;background:transparent;font-size:1.05rem}
+.composer input::placeholder{color:#5A7290}
+#blow{padding:0 20px;border:0;border-radius:14px;background:var(--ink);color:#fff;font-weight:800;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none}
+#blow.held{background:#D0457F}
+.hint{margin:0 0 12px 8px;font-size:.8rem;color:var(--ink2)}
+.filters{display:inline-flex;gap:4px;background:rgba(255,255,255,.7);padding:4px;border-radius:16px;flex-wrap:wrap}
+.filters button{border:0;background:transparent;padding:6px 14px;border-radius:12px;cursor:pointer}
+.filters button[aria-pressed=true]{background:var(--ink);color:#fff;font-weight:700}
+.filters .n{display:inline-block;min-width:1.4em;margin-left:6px;font-weight:800}
+.stage{display:grid;grid-template-columns:1fr 300px;gap:20px;margin-top:14px;align-items:start}
+#field{position:relative;height:470px;overflow:hidden;border-radius:30px;background:rgba(255,255,255,.2);box-shadow:inset 0 0 0 2px rgba(255,255,255,.6);touch-action:manipulation}
+.f-done #field{display:none}
+#list{display:none;background:#fff;border-radius:22px;padding:16px 18px;box-shadow:0 2px 0 var(--ink);min-height:200px}
+.f-done #list{display:block}
+#list h2{margin:0 0 10px;font-size:1.15rem}
+#list ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+#list li{display:flex;align-items:center;gap:10px}
+#list s{flex:1;min-width:0;color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#list time{font-size:.75rem;color:var(--ink2)}
+#list li button{border:2px solid var(--ink);background:#fff;border-radius:10px;font-size:.8rem;font-weight:700;padding:2px 10px;cursor:pointer}
+#list .none{color:var(--ink2);margin:6px 0}
+#empty{position:absolute;left:12px;right:12px;bottom:16px;text-align:center;pointer-events:none}
+#empty span{display:inline-block;background:rgba(255,255,255,.85);border-radius:16px;padding:8px 14px;font-size:.9rem}
+#empty b{display:block}
+#cheer{position:absolute;left:0;right:0;top:34%;text-align:center;font-size:2.1rem;font-weight:800;line-height:1.1;pointer-events:none;padding:0 16px;
+  color:var(--ink);text-shadow:0 0 6px #fff,0 0 2px #fff,0 3px 0 #fff;opacity:0}
+#cheer.show{animation:cheer 4.5s ease-out forwards}
+@keyframes cheer{0%{opacity:0;transform:scale(.4)}8%{opacity:1;transform:scale(1.15)}14%{transform:scale(1)}85%{opacity:1}100%{opacity:0;transform:translateY(-20px)}}
+.reduced #cheer.show{animation:cheerfade 4.5s step-end forwards}
+@keyframes cheerfade{0%{opacity:1}100%{opacity:0}}
+.bubble{position:absolute;left:0;top:0;border-radius:50%;display:grid;place-items:center;text-align:center;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:manipulation;
+  color:var(--ink);font-weight:700;font-size:14px;line-height:1.15;will-change:transform;
+  background:
+    radial-gradient(circle at 32% 24%,#fff 0 7%,rgba(255,255,255,0) 15%),
+    radial-gradient(circle at 70% 78%,rgba(255,255,255,.7) 0 3%,rgba(255,255,255,0) 7%),
+    radial-gradient(circle,rgba(255,255,255,.55) 58%,rgba(255,255,255,.25) 100%);
+  box-shadow:inset 6px 0 10px -2px rgba(242,166,200,.85),inset -6px 2px 10px -2px rgba(158,227,207,.95),inset 0 -6px 12px -2px rgba(195,181,242,.9),0 10px 24px rgba(30,58,95,.12)}
+.bubble:focus-visible{outline:3px solid #D0457F;outline-offset:2px}
+.bubble .t{pointer-events:none;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;word-break:break-word}
+.bubble .x{position:absolute;top:2px;right:2px;width:26px;height:26px;padding:0;border-radius:50%;border:2px solid var(--ink);background:#fff;line-height:1;font-weight:800;cursor:pointer;opacity:0}
+.bubble:hover .x,.bubble:focus-within .x{opacity:1}
+@media (hover:none){.bubble .x{opacity:.8}}
+.bubble.practice{color:var(--ink2);box-shadow:inset 0 0 0 3px var(--lilac),0 10px 24px rgba(30,58,95,.12)}
+.bubble.preview{pointer-events:none;opacity:.9}
+.bubble.tense{animation:tense .23s linear forwards}
+@keyframes tense{0%{scale:1}25%{scale:1.06 .95;rotate:-4deg}50%{scale:.96 1.08;rotate:4deg}75%{scale:1.1 .98;rotate:-2deg}100%{scale:1.18;rotate:0deg}}
+.marble{display:inline-block;flex:none;width:var(--m,18px);height:var(--m,18px);border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#fff 0 14%,var(--c) 42%,var(--d) 100%);box-shadow:0 1px 0 rgba(30,58,95,.35)}
+.marble.flying{position:fixed;left:0;top:0;z-index:6;pointer-events:none;--m:20px}
+.marble.landed{animation:land .3s ease-out}
+@keyframes land{0%{transform:translateY(-6px) scale(1.3)}60%{transform:translateY(2px) scale(.9,1.1)}100%{transform:none}}
+#fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:5}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:10;background:var(--ink);color:#fff;border-radius:16px;padding:8px 8px 8px 16px;display:flex;gap:12px;align-items:center;max-width:calc(100% - 32px);overflow:hidden;box-shadow:0 6px 20px rgba(30,58,95,.3)}
+#toast .msg{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#toast .undo{background:#fff;color:var(--ink);border:0;border-radius:10px;padding:4px 12px;font-weight:800;cursor:pointer}
+#toast .bar{position:absolute;left:0;bottom:0;height:3px;background:var(--pink);width:100%;animation:drain 5s linear forwards}
+@keyframes drain{to{width:0}}
+.panel{display:flex;flex-direction:column;align-items:center;gap:10px}
+.readout{margin:0;background:#fff;border-radius:999px;padding:6px 18px;box-shadow:0 2px 0 var(--ink);font-weight:700;text-align:center}
+.readout b{font-size:1.5rem}
+.sub{margin:0;font-size:.85rem;color:var(--ink2);text-align:center;max-width:260px}
+@keyframes wiggle{20%{transform:rotate(-4deg)}40%{transform:rotate(4deg) scale(1.04)}60%{transform:rotate(-2deg)}80%{transform:rotate(1deg)}}
+.reduced .stage *,.reduced .shelf *{animation-duration:0s!important;transition-duration:0s!important}
+.reduced .tally.bump b{animation:none}
+@media (max-width:720px){
+  .wrap{padding:14px 14px 120px}
+  h1{font-size:2rem}
+  .stage{grid-template-columns:1fr}
+  #field{height:290px}
+  #cheer{font-size:1.7rem}
+  header{gap:4px 12px}
+  .pill,.tools select,.tools label{font-size:.8rem}
+  #blow{padding:0 14px}
+  .hint{font-size:.75rem}
+  .stage{gap:8px}
+  .panel > :first-child{zoom:.72}
+}
+/* ---- variant: fill-line ---- */
+.jar{position:relative;width:210px;margin-top:34px}
+.jar .lid{position:absolute;left:22px;right:22px;top:-30px;height:24px;border-radius:12px 12px 5px 5px;background:var(--pink);box-shadow:inset 0 -5px 0 rgba(201,87,141,.45),0 2px 0 var(--ink);
+  transform:translateY(-70px) rotate(-14deg);opacity:0;transition:transform .6s cubic-bezier(.3,1.7,.5,1),opacity .15s}
+.jar.full .lid{transform:none;opacity:1}
+.jar .neck{width:170px;height:16px;margin:0 auto;border:4px solid var(--ink);border-bottom:0;border-radius:8px 8px 0 0;background:rgba(255,255,255,.4)}
+.glass{position:relative;height:270px;border:4px solid var(--ink);border-radius:28px 28px 48px 48px;overflow:hidden;
+  background:linear-gradient(90deg,rgba(255,255,255,.6),rgba(255,255,255,.25) 35%,rgba(255,255,255,.5))}
+.glass::after{content:"";position:absolute;left:16px;top:22px;width:11px;height:55%;border-radius:8px;background:rgba(255,255,255,.75);pointer-events:none}
+.pile{position:absolute;left:0;right:0;bottom:0;height:0;transition:height .7s cubic-bezier(.3,1.45,.5,1);
+  background:
+    radial-gradient(circle at 40% 35%,#fff 0 2px,transparent 3px) 0 100%/22px 20px,
+    radial-gradient(circle,var(--pink) 0 9px,transparent 10px) 0 100%/22px 20px,
+    radial-gradient(circle at 40% 35%,#fff 0 2px,transparent 3px) 11px calc(100% - 10px)/22px 20px,
+    radial-gradient(circle,var(--mint) 0 9px,transparent 10px) 11px calc(100% - 10px)/22px 20px,
+    #CFC3F5}
+.pile::before{content:"";position:absolute;left:0;right:0;top:-9px;height:18px;background:radial-gradient(circle,#CFC3F5 0 9px,transparent 10px) 0 0/22px 18px repeat-x}
+.pile.empty::before{display:none}
+.line{position:absolute;left:0;right:0;top:12%;border-top:3px dashed var(--ink);z-index:2}
+.line span{position:absolute;right:8px;top:-26px;font-size:.75rem;font-weight:800;background:#fff;border-radius:999px;padding:1px 9px;box-shadow:0 0 0 2px var(--ink)}
+.ticks i{position:absolute;right:0;width:16px;height:3px;border-radius:2px;background:rgba(30,58,95,.3);z-index:2;transition:background .3s}
+.ticks i.on{background:var(--ink)}
+.jar.full .line{border-top-color:var(--gold)}
+.jar.full .line span{background:var(--sun)}
+.jar.cheer{animation:wiggle .7s ease-out}
+@media (max-width:720px){.jar{width:180px}.jar .neck{width:146px}.glass{height:220px}}
+</style>
+</head>
+<body class="f-all">
+<div class="wrap">
+<header>
+  <h1>todoit<small>washday · fill line</small></h1>
+  <p id="tally" class="tally"><b>0</b> popped since you started</p>
+  <div class="tools">
+    <button id="mute" class="pill" aria-pressed="false">Sound on</button>
+    <label>Motion <select id="motion"><option value="system">follow system</option><option value="full">full</option><option value="reduced">reduced</option></select></label>
+  </div>
+</header>
+<form class="composer" onsubmit="return false">
+  <input id="text" placeholder="Dip the wand and name a bubble" maxlength="80" autocomplete="off" aria-label="New todo">
+  <button id="blow" type="button">Hold to blow</button>
+</form>
+<p class="hint">Type, then hold “Hold to blow” and let go. Tap a bubble to pop it into the jar. Enter fires a medium shot.</p>
+<nav class="filters" aria-label="Filter todos">
+  <button data-f="all" aria-pressed="true">All<span class="n"></span></button>
+  <button data-f="active" aria-pressed="false">Floating<span class="n"></span></button>
+  <button data-f="done" aria-pressed="false">Popped<span class="n"></span></button>
+</nav>
+<div class="stage">
+  <div>
+    <section id="field" aria-label="Bubbles">
+      <div id="empty" hidden><span><b>Nothing floating.</b>Blow a new bubble, or pop the practice one (it does not count).</span></div>
+      <div id="cheer" role="status"></div>
+    </section>
+    <section id="list" aria-label="Popped"></section>
+  </div>
+  <aside class="panel" aria-label="Jar">
+    <div class="jar" id="jar">
+      <div class="lid"></div>
+      <div class="neck"></div>
+      <div class="glass" id="glass">
+        <div class="ticks" id="ticks"></div>
+        <div class="pile empty" id="pile"></div>
+        <div class="line"><span>full</span></div>
+      </div>
+    </div>
+    <p class="readout"><b id="pDone">0</b> of <b id="pTotal">0</b> popped</p>
+    <p class="sub" id="psub"></p>
+  </aside>
+</div>
+
+</div>
+<canvas id="fx" aria-hidden="true"></canvas>
+<div id="toast" role="status" hidden><span class="msg"></span><button class="undo">Undo</button><i class="bar"></i></div>
+<script>
+'use strict';
+// Shared core: state, sound, physics, particles, add/pop/restore/delete, clear detection.
+// The variant object V at the bottom draws the jar and its progress.
+const $ = (s, r = document) => r.querySelector(s);
+const field = $('#field'), listEl = $('#list'), fxc = $('#fx'), fx = fxc.getContext('2d');
+const input = $('#text'), blowBtn = $('#blow'), toastEl = $('#toast');
+// flying: ids whose marble is still in the air. Counts change at once; the jar's picture waits for the marble.
+const S = { todos: [], tally: 0, filter: 'all', muted: false, motion: 'system', nextId: 1, flying: new Set(), cleared: false, justPopped: null };
+const mq = matchMedia('(prefers-reduced-motion: reduce)');
+const reduced = () => S.motion === 'reduced' || (S.motion === 'system' && mq.matches);
+const rand = (a, b) => a + Math.random() * (b - a);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const findTodo = id => S.todos.find(t => t.id === id);
+const fieldRect = () => field.getBoundingClientRect();
+const PAL = [['#F2A6C8', '#C9578D'], ['#9EE3CF', '#3E9E86'], ['#C3B5F2', '#7A63C9'], ['#FFE27A', '#C99A12'], ['#A9DAF5', '#3C86B8']];
+const colorOf = id => id % PAL.length;
+const marbleAttr = ci => `style="--c:${PAL[ci][0]};--d:${PAL[ci][1]}"`;
+const marbleHTML = (ci, cls = '') => `<i class="marble ${cls}" ${marbleAttr(ci)}></i>`;
+const counts = () => { const act = S.todos.filter(t => !t.done).length; return { act, dn: S.todos.length - act, total: S.todos.length }; };
+const doneByTime = () => S.todos.filter(t => t.done).sort((a, b) => a.doneAt - b.doneAt);
+const centerOfRect = r => [r.left + r.width / 2, r.top + r.height / 2];
+
+// ---- sound: the AudioContext is only created by the first tap or key press ----
+let ac = null, noiseBuf = null;
+function wake() {
+  if (!ac) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    ac = new AC();
+    noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  if (ac.state === 'suspended') ac.resume();
+}
+addEventListener('pointerdown', wake, true);
+addEventListener('keydown', wake, true);
+function env(g, t, peak, dur) {
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(peak, t + 0.006);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+}
+function tone(f0, f1, dur, peak, type = 'sine', delay = 0) {
+  if (S.muted || !ac) return;
+  const t = ac.currentTime + delay, o = ac.createOscillator(), g = ac.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(f0, t);
+  o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  env(g, t, peak, dur);
+  o.connect(g).connect(ac.destination);
+  o.start(t); o.stop(t + dur + 0.02);
+}
+function hiss(freq, q, dur, peak, delay = 0, freq1) {
+  if (S.muted || !ac) return;
+  const t = ac.currentTime + delay, s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+  s.buffer = noiseBuf; f.type = 'bandpass'; f.Q.value = q;
+  f.frequency.setValueAtTime(freq, t);
+  if (freq1) f.frequency.exponentialRampToValueAtTime(freq1, t + dur);
+  env(g, t, peak, dur);
+  s.connect(f).connect(g).connect(ac.destination);
+  s.start(t); s.stop(t + dur + 0.02);
+}
+function hum() {
+  if (S.muted || !ac) return () => {};
+  const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+  o.type = 'triangle';
+  o.frequency.setValueAtTime(140, t); o.frequency.linearRampToValueAtTime(520, t + 1.2);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.05, t + 0.08);
+  o.connect(g).connect(ac.destination); o.start(t);
+  return () => {
+    const n = ac.currentTime;
+    g.gain.cancelScheduledValues(n);
+    g.gain.setValueAtTime(Math.max(g.gain.value, 0.0001), n);
+    g.gain.exponentialRampToValueAtTime(0.0001, n + 0.05);
+    o.stop(n + 0.06);
+  };
+}
+const sfx = {
+  whoosh: p => hiss(500, 0.7, 0.22 + p * 0.25, 0.15 + p * 0.4, 0, 2500 + p * 3500),
+  pop: (k = 1) => { const j = rand(0.88, 1.12); hiss(2200 * j, 1.2, 0.07, 0.7 * k); tone(1000 * j, 160 * j, 0.1, 0.45 * k); },
+  fizzle: () => hiss(5000, 2, 0.35, 0.05, 0, 1200),
+  restore: () => { tone(300, 700, 0.18, 0.18); tone(450, 1050, 0.18, 0.1, 'sine', 0.06); },
+  nope: () => tone(200, 150, 0.12, 0.08, 'square'),
+  clink: () => { tone(1900, 1750, 0.09, 0.14); tone(2800, 2600, 0.07, 0.07, 'sine', 0.04); },
+  fanfare: () => {
+    [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, f * 1.01, 0.4, 0.13, 'triangle', i * 0.09));
+    tone(1047, 1047, 0.9, 0.08, 'sine', 0.45);
+    hiss(6000, 1.5, 0.8, 0.05, 0.4, 9000);
+  },
+};
+
+// ---- particles on a fixed canvas, viewport coordinates ----
+const parts = [];
+function burst(x, y, n, o = {}) {
+  for (let i = 0; i < n; i++) {
+    const a = o.up ? rand(-Math.PI * 0.95, -Math.PI * 0.05) : rand(0, 6.283), s = rand(0.3, 1) * (o.spd || 300);
+    parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0, max: rand(0.6, 1) * (o.life || 0.6),
+      size: rand(0.6, 1.4) * (o.size || 3), g: o.g ?? 400, c: o.c || PAL[i % PAL.length][1] });
+  }
+}
+const ringFx = (x, y, r0, r1, max = 0.35, c = 'rgba(30,58,95,.45)') => parts.push({ ring: true, x, y, r0, r1, life: 0, max, c });
+function drawFx(dt) {
+  const dpr = devicePixelRatio || 1, w = innerWidth, h = innerHeight;
+  if (fxc.width !== Math.round(w * dpr) || fxc.height !== Math.round(h * dpr)) { fxc.width = Math.round(w * dpr); fxc.height = Math.round(h * dpr); }
+  fx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  fx.clearRect(0, 0, w, h);
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const p = parts[i];
+    p.life += dt;
+    if (p.life >= p.max) { parts.splice(i, 1); continue; }
+    const k = 1 - p.life / p.max;
+    fx.globalAlpha = k;
+    if (p.ring) {
+      fx.strokeStyle = p.c; fx.lineWidth = 3 * k; fx.beginPath();
+      fx.arc(p.x, p.y, p.r0 + (p.r1 - p.r0) * (1 - k), 0, 6.283); fx.stroke();
+      continue;
+    }
+    p.vy += p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.99;
+    fx.fillStyle = p.c;
+    fx.beginPath(); fx.arc(p.x, p.y, p.size * (0.5 + 0.5 * k), 0, 6.283); fx.fill();
+  }
+  fx.globalAlpha = 1;
+}
+
+// ---- bubbles and physics; positions are field-local ----
+const bodies = new Map();
+const P = { gravity: -70, wander: 35, damping: 0.97, bounce: 0.45 };
+const radiusFor = (text, charge) => clamp(36 + text.length * 1.1, 44, 76) * (0.85 + 0.35 * charge);
+function sizeBubble(el, r) { el.style.width = el.style.height = 2 * r + 'px'; el.style.padding = r * 0.3 + 'px'; }
+function spawn(todo, x, y, vx, vy, r) {
+  const el = document.createElement('div');
+  const label = todo ? todo.text : 'pop me';
+  el.className = 'bubble' + (todo ? '' : ' practice');
+  el.tabIndex = 0;
+  el.setAttribute('role', 'button');
+  el.setAttribute('aria-label', todo ? 'Pop to complete: ' + label : 'Practice bubble, pop it');
+  el.dataset.id = todo ? todo.id : 'practice';
+  el.innerHTML = '<span class="t"></span>';
+  el.firstChild.textContent = label;
+  if (todo) {
+    const x = document.createElement('button');
+    x.className = 'x'; x.textContent = '×'; x.setAttribute('aria-label', 'Delete ' + label);
+    el.append(x);
+  }
+  sizeBubble(el, r);
+  field.append(el);
+  const b = { id: todo ? todo.id : 'practice', todo, el, x, y, vx, vy, r, m: r * r, wob: 0.7, ph: rand(0, 6) };
+  bodies.set(b.id, b);
+  place(b);
+  return b;
+}
+function place(b) {
+  const s = Math.sin(b.ph) * b.wob * 0.09;
+  b.el.style.transform = `translate(${b.x - b.r}px,${b.y - b.r}px) scale(${1 + s},${1 - s})`;
+}
+function physics(dt, W, H) {
+  const list = [...bodies.values()];
+  for (const b of list) {
+    b.vx += rand(-1, 1) * P.wander * dt; b.vy += (P.gravity + rand(-1, 1) * P.wander) * dt;
+    const damp = Math.pow(P.damping, dt * 60);
+    b.vx *= damp; b.vy *= damp;
+    b.x += b.vx * dt; b.y += b.vy * dt;
+    let hit = 0;
+    if (b.x < b.r) { b.x = b.r; hit = Math.abs(b.vx); b.vx = Math.abs(b.vx) * P.bounce; }
+    else if (b.x > W - b.r) { b.x = W - b.r; hit = Math.abs(b.vx); b.vx = -Math.abs(b.vx) * P.bounce; }
+    if (b.y < b.r) { b.y = b.r; hit = Math.max(hit, Math.abs(b.vy)); b.vy = Math.abs(b.vy) * P.bounce; }
+    else if (b.y > H - b.r) { b.y = H - b.r; hit = Math.max(hit, Math.abs(b.vy)); b.vy = -Math.abs(b.vy) * P.bounce; }
+    if (hit > 60) b.wob = Math.min(1, b.wob + hit / 1500);
+    if (hit > 500) tone(200, 140, 0.05, 0.04, 'triangle');
+  }
+  for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) collide(list[i], list[j]);
+  for (const b of list) { b.wob *= Math.pow(0.04, dt); b.ph += dt * 16; place(b); }
+}
+function collide(a, b) {
+  const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 0.01, o = a.r + b.r - d;
+  if (o <= 0) return;
+  const nx = dx / d, ny = dy / d, tm = a.m + b.m;
+  a.x -= nx * o * b.m / tm; a.y -= ny * o * b.m / tm;
+  b.x += nx * o * a.m / tm; b.y += ny * o * a.m / tm;
+  const rv = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+  if (rv >= 0) return;
+  const imp = -(1 + P.bounce) * rv / (1 / a.m + 1 / b.m);
+  a.vx -= imp * nx / a.m; a.vy -= imp * ny / a.m;
+  b.vx += imp * nx / b.m; b.vy += imp * ny / b.m;
+  const k = Math.min(1, -rv / 900);
+  a.wob = Math.min(1, a.wob + k); b.wob = Math.min(1, b.wob + k);
+}
+// Reduced motion: no drifting, bubbles sit in reading order.
+function layoutStatic(W) {
+  let x = 12, y = 12, rowH = 0;
+  for (const b of bodies.values()) {
+    const d = 2 * b.r;
+    if (x + d > W - 12 && x > 12) { x = 12; y += rowH + 12; rowH = 0; }
+    b.x = x + b.r; b.y = y + b.r; b.vx = b.vy = 0; b.wob = 0;
+    x += d + 12; rowH = Math.max(rowH, d);
+    place(b);
+  }
+}
+function fadeOut(el, ms = 160) {
+  el.style.pointerEvents = 'none';
+  el.style.transition = `opacity ${ms}ms`;
+  el.style.opacity = 0;
+  setTimeout(() => el.remove(), ms);
+}
+function deflate(b) {
+  if (reduced()) return fadeOut(b.el);
+  b.el.style.pointerEvents = 'none';
+  b.el.style.transition = 'transform .35s ease-in, opacity .35s ease-in';
+  b.el.style.transform = `translate(${b.x - b.r}px,${b.y - b.r}px) scale(.15)`;
+  b.el.style.opacity = 0;
+  setTimeout(() => b.el.remove(), 360);
+}
+const centerOf = b => { const fr = fieldRect(); return [fr.left + b.x, fr.top + b.y]; };
+function flyMarble(from, to, ci, ms, done) {
+  const m = document.createElement('i');
+  m.className = 'marble flying';
+  m.setAttribute('style', `--c:${PAL[ci][0]};--d:${PAL[ci][1]}`);
+  document.body.append(m);
+  const lift = Math.min(from[1], to[1]) - 120;
+  m.animate([
+    { transform: `translate(${from[0] - 10}px,${from[1] - 10}px) scale(1.4)` },
+    { transform: `translate(${(from[0] + to[0]) / 2 - 10}px,${lift}px) scale(1.2)`, offset: 0.45 },
+    { transform: `translate(${to[0] - 10}px,${to[1] - 10}px) scale(.8)` },
+  ], { duration: ms, easing: 'ease-in' }).onfinish = () => { m.remove(); done(); };
+}
+
+// ---- actions: state changes happen at once, effects follow ----
+function launch(t, charge) {
+  const W = field.clientWidth || 320, H = field.clientHeight || 320, r = radiusFor(t.text, charge);
+  const spd = 700 + charge * 1200, ang = -Math.PI / 2 + rand(-0.18, 0.18);
+  const b = spawn(t, W / 2, H - r - 2, Math.cos(ang) * spd, Math.sin(ang) * spd, r);
+  if (!reduced()) b.wob = 1;
+  return b;
+}
+function add(charge) {
+  const text = input.value.trim();
+  if (!text) return nudge();
+  const t = { id: S.nextId++, text, done: false, createdAt: Date.now(), doneAt: null };
+  S.todos.push(t);
+  input.value = '';
+  if (S.filter === 'done') S.filter = 'all';
+  render();
+  launch(t, charge);
+  sfx.whoosh(charge);
+}
+function pop(id) {
+  const t = findTodo(id);
+  if (!t || t.done) return;
+  t.done = true; t.doneAt = Date.now(); S.tally++; S.justPopped = id;
+  if (V.onPop) V.onPop(t);
+  const b = bodies.get(id);
+  bodies.delete(id);
+  if (b && !reduced()) S.flying.add(id);
+  render();
+  if (b) burstBubble(b, t); else landed(t);
+}
+function burstBubble(b, t) {
+  if (reduced()) { sfx.pop(1); fadeOut(b.el); if (t) { setTimeout(sfx.clink, 120); landed(t); } return; }
+  const [x, y] = centerOf(b);
+  b.el.style.pointerEvents = 'none';
+  b.el.classList.add('tense');
+  tone(500, 950, 0.2, 0.06, 'triangle');
+  setTimeout(() => {
+    b.el.remove();
+    sfx.pop(1.1);
+    burst(x, y, 26, { spd: 320, g: 1100, life: 0.8, size: 3 });
+    ringFx(x, y, b.r, b.r * 1.8 + 30);
+    if (!t) return;
+    flyMarble([x, y], V.target(t), colorOf(t.id), 620, () => { sfx.clink(); landed(t); });
+  }, 230);
+}
+// A marble has landed (or there was no flight): redraw the jar, and if that was the last one, celebrate.
+function landed(t) {
+  S.flying.delete(t.id);
+  const c = counts();
+  const clearNow = !S.cleared && c.total > 0 && c.act === 0 && S.flying.size === 0;
+  if (clearNow) S.cleared = true;
+  V.draw(t);
+  if (clearNow) celebrate();
+}
+function celebrate() {
+  sfx.fanfare();
+  const ch = $('#cheer');
+  ch.textContent = V.cheerText;
+  ch.classList.remove('show'); void ch.offsetWidth; ch.classList.add('show');
+  if (!reduced()) {
+    const [x, y] = V.jarCenter();
+    for (let i = 0; i < PAL.length; i++) burst(x, y, 12, { up: true, spd: 620, g: 800, life: 1.4, size: 5, c: PAL[i][1] });
+    ringFx(x, y, 30, 220, 0.7, 'rgba(224,176,32,.9)');
+    const fr = fieldRect();
+    for (let i = 0; i < 4; i++) setTimeout(() => burst(fr.left + rand(0.15, 0.85) * fr.width, fr.top + rand(0.2, 0.6) * fr.height, 18, { spd: 260, g: 300, life: 1, size: 4 }), 150 + i * 160);
+  }
+  V.celebrate();
+}
+let practiceTimer = 0;
+function popPractice() {
+  const b = bodies.get('practice');
+  if (!b) return;
+  bodies.delete('practice');
+  burstBubble(b, null);
+  practiceTimer = setTimeout(() => { practiceTimer = 0; ensurePractice(); }, 1600);
+}
+function ensurePractice() {
+  const empty = S.filter !== 'done' && !S.todos.some(t => !t.done);
+  $('#empty').hidden = !empty;
+  if (empty && !bodies.has('practice') && !practiceTimer) {
+    const W = field.clientWidth || 320, H = field.clientHeight || 320;
+    spawn(null, W / 2, H * 0.5, rand(-80, 80), rand(-80, 80), 46);
+  }
+  if (!empty && bodies.has('practice')) { const b = bodies.get('practice'); bodies.delete('practice'); fadeOut(b.el); }
+}
+function restore(id) {
+  const t = findTodo(id);
+  if (!t || !t.done) return;
+  t.done = false; t.doneAt = null;
+  S.flying.delete(id);
+  if (V.onRestore) V.onRestore(t);
+  launch(t, 0.6);
+  sfx.restore();
+  render();
+}
+let undoFn = null, toastTimer = 0;
+function del(id) {
+  const i = S.todos.findIndex(t => t.id === id);
+  if (i < 0) return;
+  const [t] = S.todos.splice(i, 1);
+  S.flying.delete(id);
+  const b = bodies.get(id);
+  if (b) { bodies.delete(id); deflate(b); }
+  sfx.fizzle();
+  clearTimeout(toastTimer);
+  toastEl.hidden = false;
+  $('.msg', toastEl).textContent = `Deleted “${t.text}”`;
+  const bar = $('.bar', toastEl);
+  bar.style.animation = 'none'; void bar.offsetWidth; bar.style.animation = '';
+  undoFn = () => {
+    S.todos.splice(Math.min(i, S.todos.length), 0, t);
+    hideToast();
+    render();
+    if (!t.done) launch(t, 0.5);
+    sfx.restore();
+  };
+  toastTimer = setTimeout(hideToast, 5000);
+  render();
+}
+function hideToast() { toastEl.hidden = true; undoFn = null; clearTimeout(toastTimer); }
+$('.undo', toastEl).addEventListener('click', () => undoFn && undoFn());
+function nudge() {
+  sfx.nope();
+  input.focus();
+  if (!reduced()) input.animate([{ transform: 'none' }, { transform: 'translateX(-6px)' }, { transform: 'translateX(6px)' }, { transform: 'none' }], { duration: 200 });
+}
+
+// ---- blowing a new bubble: hold to grow it, release to shoot it ----
+let charging = null;
+const chargeNow = () => clamp((performance.now() - charging.t0) / 1200, 0, 1);
+function startCharge() {
+  if (charging) return;
+  if (!input.value.trim()) return nudge();
+  if (S.filter === 'done') { S.filter = 'all'; render(); }
+  const el = document.createElement('div');
+  el.className = 'bubble preview';
+  el.innerHTML = '<span class="t"></span>';
+  el.firstChild.textContent = input.value.trim();
+  field.append(el);
+  charging = { t0: performance.now(), stop: hum(), el };
+  blowBtn.classList.add('held');
+}
+function endCharge() {
+  if (!charging) return;
+  const c = chargeNow();
+  charging.stop(); charging.el.remove(); charging = null;
+  blowBtn.classList.remove('held');
+  add(c);
+}
+function drawPreview() {
+  if (!charging) return;
+  const c = chargeNow(), r = radiusFor(charging.el.textContent, c), W = field.clientWidth, H = field.clientHeight;
+  const j = reduced() ? 0 : Math.sin(performance.now() / 40) * c * 2;
+  sizeBubble(charging.el, r);
+  charging.el.style.transform = `translate(${W / 2 - r + j}px,${H - 2 * r - 4}px)`;
+}
+blowBtn.addEventListener('pointerdown', e => { if (e.button) return; blowBtn.setPointerCapture(e.pointerId); startCharge(); });
+blowBtn.addEventListener('pointerup', endCharge);
+blowBtn.addEventListener('pointercancel', endCharge);
+blowBtn.addEventListener('keydown', e => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) { e.preventDefault(); startCharge(); } });
+blowBtn.addEventListener('keyup', e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); endCharge(); } });
+blowBtn.addEventListener('contextmenu', e => e.preventDefault());
+input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); add(0.55); } });
+
+// ---- field and list input ----
+field.addEventListener('pointerdown', e => {
+  const el = e.target.closest('.bubble');
+  if (!el || el.classList.contains('preview') || e.target.closest('.x')) return;
+  if (el.dataset.id === 'practice') popPractice(); else pop(+el.dataset.id);
+});
+field.addEventListener('click', e => { const x = e.target.closest('.x'); if (x) del(+x.parentElement.dataset.id); });
+field.addEventListener('keydown', e => {
+  const el = e.target.classList.contains('bubble') ? e.target : null;
+  if (!el) return;
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (el.dataset.id === 'practice') popPractice(); else pop(+el.dataset.id); }
+  if ((e.key === 'Delete' || e.key === 'Backspace') && el.dataset.id !== 'practice') del(+el.dataset.id);
+});
+listEl.addEventListener('click', e => {
+  const btn = e.target.closest('[data-act]');
+  if (!btn) return;
+  const id = +btn.closest('[data-id]').dataset.id;
+  if (btn.dataset.act === 'restore') restore(id);
+  if (btn.dataset.act === 'delete') del(id);
+});
+document.querySelectorAll('.filters button').forEach(b => b.addEventListener('click', () => { S.filter = b.dataset.f; render(); }));
+$('#mute').addEventListener('click', () => {
+  S.muted = !S.muted;
+  $('#mute').textContent = 'Sound ' + (S.muted ? 'off' : 'on');
+  $('#mute').setAttribute('aria-pressed', S.muted);
+});
+$('#motion').addEventListener('change', e => { S.motion = e.target.value; render(); });
+mq.addEventListener('change', render);
+
+// ---- render: counts are always instant ----
+let shownTally = 0;
+const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const ago = ms => { const s = Math.round((Date.now() - ms) / 1000); return s < 60 ? 'just now' : s < 3600 ? Math.round(s / 60) + 'm ago' : Math.round(s / 3600) + 'h ago'; };
+function render() {
+  document.body.className = 'f-' + S.filter + (reduced() ? ' reduced' : '');
+  const c = counts();
+  if (c.act > 0) S.cleared = false;
+  const n = { all: c.total, active: c.act, done: c.dn };
+  document.querySelectorAll('.filters button').forEach(b => {
+    b.setAttribute('aria-pressed', b.dataset.f === S.filter);
+    $('.n', b).textContent = n[b.dataset.f];
+  });
+  const tal = $('#tally');
+  $('b', tal).textContent = S.tally;
+  if (S.tally !== shownTally) { tal.classList.remove('bump'); void tal.offsetWidth; tal.classList.add('bump'); shownTally = S.tally; }
+  const done = doneByTime().reverse();
+  listEl.innerHTML = '<h2>Popped</h2>' + (done.length ? '<ul>' + done.map(t =>
+    `<li data-id="${t.id}">${marbleHTML(colorOf(t.id))}<s>${esc(t.text)}</s><time>${ago(t.doneAt)}</time><button data-act="restore">Blow again</button><button data-act="delete" aria-label="Delete ${esc(t.text)}">×</button></li>`).join('') + '</ul>'
+    : '<p class="none">Nothing popped yet. Pop a bubble and it lands here.</p>');
+  ensurePractice();
+  V.draw();
+  S.justPopped = null;
+}
+
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.033, (now - last) / 1000);
+  last = now;
+  const W = field.clientWidth, H = field.clientHeight;
+  if (W && H) { if (reduced()) layoutStatic(W); else physics(dt, W, H); }
+  drawPreview();
+  drawFx(dt);
+  requestAnimationFrame(frame);
+}
+function boot() {
+  // Opens mid-use: six todos, two already popped, and 21 pops from earlier days on the all-time tally.
+  const seed = ['Buy oat milk', 'Call the dentist', 'Fix the squeaky hinge on the back door', 'Water the plants', 'Pay rent', 'Return library books'];
+  const W = field.clientWidth || 320, H = field.clientHeight || 320;
+  seed.forEach((text, i) => {
+    const done = i >= 4;
+    const t = { id: S.nextId++, text, done, createdAt: Date.now(), doneAt: done ? Date.now() - (50 - i * 10) * 60000 : null };
+    S.todos.push(t);
+    if (!done) spawn(t, W * (0.2 + 0.2 * i), H * (0.35 + 0.15 * (i % 2)), rand(-60, 60), rand(-60, 60), radiusFor(text, 0.5));
+  });
+  S.tally = shownTally = 23;
+  if (V.init) V.init();
+  render();
+  requestAnimationFrame(frame);
+}
+
+// ---- variant: fill-line ----
+// Fill line: the jar is this list. Its dashed line marks "every todo popped"; each landing marble raises the pile
+// toward it, one notch per todo. The all-time tally stays in the header pill.
+const FULL = 0.88; // pile height (fraction of the glass) that reaches the line
+const V = {
+  cheerText: 'List cleared! The jar is full.',
+  draw() {
+    const { act, dn, total } = counts(), vis = dn - S.flying.size;
+    $('#pDone').textContent = dn;
+    $('#pTotal').textContent = total;
+    const pile = $('#pile');
+    pile.style.height = (total ? vis / total * FULL * 100 : 0) + '%';
+    pile.classList.toggle('empty', vis <= 0);
+    $('#ticks').innerHTML = Array.from({ length: total }, (_, i) =>
+      `<i class="${i < vis ? 'on' : ''}" style="bottom:calc(${(i + 1) / total * FULL * 100}% - 1px)"></i>`).join('');
+    $('#jar').classList.toggle('full', S.cleared);
+    $('#psub').textContent = !total ? 'Blow a bubble to start a jar.' : S.cleared ? 'Full to the line. Blow a bubble to start the next one.'
+      : act ? `${act} more to reach the line.` : 'Last marble on its way…';
+  },
+  // Aim at the pile's next level.
+  target() {
+    const r = $('#glass').getBoundingClientRect(), { dn, total } = counts();
+    const level = Math.min(1, (dn - S.flying.size + 1) / total) * FULL;
+    return [r.left + r.width / 2 + rand(-30, 30), r.bottom - 6 - level * (r.height - 8) + 10];
+  },
+  jarCenter: () => centerOfRect($('#glass').getBoundingClientRect()),
+  celebrate() {
+    const j = $('#jar');
+    j.classList.remove('cheer'); void j.offsetWidth; j.classList.add('cheer');
+  },
+};
+
+boot();
+</script>
+</body>
+</html>
